@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import date
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 from groq import Groq
 from dotenv import load_dotenv
@@ -20,16 +21,32 @@ voitures = [
     {"id": 8, "marque": "Volkswagen", "modele": "Touareg",  "type": "suv",        "places": 7, "prix_jour": 95,  "transmission": "automatique", "carburant": "diesel"},
 ]
 
+reservations = []
+
 @app.route('/')
 def index():
     message = "Aucune voiture disponible pour le moment." if not voitures else None
-    return render_template('index.html', voitures=voitures, message=message)
+    return render_template(
+        'index.html',
+        voitures=voitures,
+        message=message,
+        reservations_count=len(reservations),
+    )
+
+def get_next_reservation_id():
+    return max((reservation["id"] for reservation in reservations), default=0) + 1
 
 def get_next_car_id():
     return max((voiture["id"] for voiture in voitures), default=0) + 1
 
 def get_car_by_id(voiture_id):
     return next((voiture for voiture in voitures if voiture["id"] == voiture_id), None)
+
+def get_reservations_by_car():
+    grouped_reservations = {voiture["id"]: [] for voiture in voitures}
+    for reservation in reservations:
+        grouped_reservations.setdefault(reservation["voiture_id"], []).append(reservation)
+    return grouped_reservations
 
 def build_car_from_form(voiture_id):
     return {
@@ -43,9 +60,59 @@ def build_car_from_form(voiture_id):
         "carburant": request.form["carburant"],
     }
 
+def build_reservation_from_form(voiture):
+    date_debut = date.fromisoformat(request.form["date_debut"])
+    date_fin = date.fromisoformat(request.form["date_fin"])
+    duree = (date_fin - date_debut).days + 1
+
+    return {
+        "id": get_next_reservation_id(),
+        "voiture_id": voiture["id"],
+        "client_nom": request.form["client_nom"].strip(),
+        "client_email": request.form["client_email"].strip(),
+        "client_telephone": request.form["client_telephone"].strip(),
+        "date_debut": date_debut.isoformat(),
+        "date_fin": date_fin.isoformat(),
+        "duree": duree,
+        "total": duree * voiture["prix_jour"],
+    }
+
+@app.route('/voitures/<int:voiture_id>/reserve', methods=['POST'])
+def reserve_car(voiture_id):
+    voiture = get_car_by_id(voiture_id)
+    if voiture is None:
+        flash("Voiture introuvable.", "error")
+        return redirect(url_for('index'))
+
+    try:
+        reservation = build_reservation_from_form(voiture)
+    except ValueError:
+        flash("Les dates de reservation sont invalides.", "error")
+        return redirect(url_for('index', _anchor='catalogue'))
+
+    if not reservation["client_nom"] or not reservation["client_email"] or not reservation["client_telephone"]:
+        flash("Veuillez remplir toutes les informations client.", "error")
+        return redirect(url_for('index', _anchor='catalogue'))
+
+    if reservation["duree"] <= 0:
+        flash("La date de fin doit etre apres la date de debut.", "error")
+        return redirect(url_for('index', _anchor='catalogue'))
+
+    reservations.append(reservation)
+    flash(
+        f"Reservation confirmee pour {voiture['marque']} {voiture['modele']} - total {reservation['total']} DH.",
+        "success",
+    )
+    return redirect(url_for('index', _anchor='catalogue'))
+
 @app.route('/admin')
 def admin_cars():
-    return render_template('admin.html', voitures=voitures)
+    return render_template(
+        'admin.html',
+        voitures=voitures,
+        reservations=reservations,
+        reservations_by_car=get_reservations_by_car(),
+    )
 
 @app.route('/admin/voitures/add', methods=['POST'])
 def add_car():
@@ -72,6 +139,10 @@ def delete_car(voiture_id):
         return redirect(url_for('admin_cars'))
 
     voitures.remove(voiture)
+    reservations[:] = [
+        reservation for reservation in reservations
+        if reservation["voiture_id"] != voiture_id
+    ]
     flash("Voiture supprimee avec succes.", "success")
     return redirect(url_for('admin_cars'))
 

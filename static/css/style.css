@@ -401,6 +401,54 @@ select {
   color: var(--ink);
 }
 
+.reservation-panel {
+  margin-top: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.reservation-panel summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.reservation-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.reservation-panel[open] summary {
+  border-radius: 8px 8px 0 0;
+}
+
+.reservation-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.reservation-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.reservation-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .empty-message {
   padding: 18px;
   border: 1px dashed #a9b6c8;
@@ -538,6 +586,84 @@ select:focus {
   background: #fff1f1;
   color: var(--red);
   border-color: rgba(194, 65, 58, .25);
+}
+
+.reservation-admin-list {
+  display: grid;
+  gap: 16px;
+}
+
+.reservation-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reservation-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: #f7f9fc;
+  border-bottom: 1px solid var(--line);
+}
+
+.reservation-group-header h3,
+.reservation-group-header p {
+  margin: 0;
+}
+
+.reservation-group-header p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.reservation-group-header strong {
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+}
+
+.reservation-table {
+  overflow-x: auto;
+}
+
+.reservation-row {
+  min-width: 780px;
+  display: grid;
+  grid-template-columns: 1.15fr 1.5fr 1.35fr .75fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.reservation-row:first-child {
+  border-top: 0;
+}
+
+.reservation-row-head {
+  min-height: 44px;
+  background: #fff;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.reservation-row span {
+  display: grid;
+  gap: 3px;
+}
+
+.reservation-row small {
+  color: var(--muted);
 }
 
 .chat-toggle {
@@ -741,6 +867,10 @@ select:focus {
   }
 
   .admin-form {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-dates {
     grid-template-columns: 1fr;
   }
 

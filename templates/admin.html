@@ -25,7 +25,7 @@
       <div>
         <p class="eyebrow">Administration</p>
         <h1>Gestion des voitures</h1>
-        <p>Ajoutez une voiture, modifiez les informations existantes ou retirez un modele du catalogue.</p>
+        <p>Ajoutez une voiture, modifiez le catalogue et suivez les reservations par modele.</p>
       </div>
       <a class="btn-secondary" href="{{ url_for('index') }}">Voir le catalogue</a>
     </div>
@@ -141,6 +141,62 @@
         </div>
       {% else %}
         <p class="empty-message">Aucune voiture dans le catalogue.</p>
+      {% endif %}
+    </section>
+
+    <section class="admin-section">
+      <div class="section-subheading">
+        <h2>Reservations par voiture</h2>
+        <span>{{ reservations|length }} reservations enregistrees</span>
+      </div>
+
+      {% if reservations %}
+        <div class="reservation-admin-list">
+          {% for voiture in voitures %}
+            {% set car_reservations = reservations_by_car.get(voiture.id, []) %}
+            <article class="reservation-group">
+              <div class="reservation-group-header">
+                <div>
+                  <h3>{{ voiture.marque }} {{ voiture.modele }}</h3>
+                  <p>{{ voiture.type }} - {{ voiture.prix_jour }} DH / jour</p>
+                </div>
+                <strong>{{ car_reservations|length }}</strong>
+              </div>
+
+              {% if car_reservations %}
+                <div class="reservation-table">
+                  <div class="reservation-row reservation-row-head">
+                    <span>Client</span>
+                    <span>Contact</span>
+                    <span>Periode</span>
+                    <span>Total</span>
+                  </div>
+                  {% for reservation in car_reservations %}
+                    <div class="reservation-row">
+                      <span>
+                        <strong>{{ reservation.client_nom }}</strong>
+                        <small>#{{ reservation.id }}</small>
+                      </span>
+                      <span>
+                        {{ reservation.client_email }}
+                        <small>{{ reservation.client_telephone }}</small>
+                      </span>
+                      <span>
+                        {{ reservation.date_debut }} -> {{ reservation.date_fin }}
+                        <small>{{ reservation.duree }} jours</small>
+                      </span>
+                      <span><strong>{{ reservation.total }} DH</strong></span>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <p class="empty-message">Aucune reservation pour cette voiture.</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-message">Aucune reservation pour le moment.</p>
       {% endif %}
     </section>
   </main>

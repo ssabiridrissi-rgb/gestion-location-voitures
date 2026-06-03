@@ -43,8 +43,8 @@
           <span>voitures</span>
         </div>
         <div>
-          <strong>30</strong>
-          <span>DH min/jour</span>
+          <strong>{{ reservations_count }}</strong>
+          <span>reservations</span>
         </div>
       </div>
     </div>
@@ -58,6 +58,16 @@
       </div>
       <button id="open-assistant" class="btn-secondary" type="button">Assistant IA</button>
     </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+          {% for category, message in messages %}
+            <p class="flash flash-{{ category }}">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
     {% if message %}
       <p class="empty-message">{{ message }}</p>
@@ -78,7 +88,34 @@
                 <li><span>Transmission</span><strong>{{ voiture.transmission }}</strong></li>
                 <li><span>Carburant</span><strong>{{ voiture.carburant }}</strong></li>
               </ul>
-              <button class="btn-primary" type="button">Reserver</button>
+              <details class="reservation-panel">
+                <summary>Reserver</summary>
+                <form class="reservation-form" action="{{ url_for('reserve_car', voiture_id=voiture.id) }}" method="post">
+                  <label>
+                    Nom complet
+                    <input name="client_nom" type="text" placeholder="Votre nom" required />
+                  </label>
+                  <label>
+                    Email
+                    <input name="client_email" type="email" placeholder="nom@email.com" required />
+                  </label>
+                  <label>
+                    Telephone
+                    <input name="client_telephone" type="tel" placeholder="+212 6..." required />
+                  </label>
+                  <div class="reservation-dates">
+                    <label>
+                      Debut
+                      <input name="date_debut" type="date" required />
+                    </label>
+                    <label>
+                      Fin
+                      <input name="date_fin" type="date" required />
+                    </label>
+                  </div>
+                  <button class="btn-primary" type="submit">Confirmer</button>
+                </form>
+              </details>
             </div>
           </article>
         {% endfor %}
