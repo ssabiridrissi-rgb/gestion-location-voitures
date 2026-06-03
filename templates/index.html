@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoLoc - Catalogue</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="AutoLoc accueil">
+        <span class="brand-mark">A</span>
+        <span>AutoLoc</span>
+      </a>
+      <nav class="main-nav" aria-label="Navigation principale">
+        <a class="active" href="{{ url_for('index') }}">Catalogue</a>
+        <a href="{{ url_for('admin_cars') }}">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="catalog-hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Location de voitures</p>
+      <h1>Trouvez rapidement la voiture adaptee a votre trajet.</h1>
+      <p>Comparez les modeles, le prix journalier, la transmission et le carburant avant de reserver.</p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="#catalogue">Voir le catalogue</a>
+        <a class="btn-secondary" href="{{ url_for('admin_cars') }}">Gerer les voitures</a>
+      </div>
+    </div>
+    <div class="hero-panel" aria-label="Apercu du service AutoLoc">
+      <div class="hero-car">
+        <span class="car-roof"></span>
+        <span class="car-body"></span>
+        <span class="wheel wheel-left"></span>
+        <span class="wheel wheel-right"></span>
+      </div>
+      <div class="hero-metrics">
+        <div>
+          <strong>{{ voitures|length }}</strong>
+          <span>voitures</span>
+        </div>
+        <div>
+          <strong>30</strong>
+          <span>DH min/jour</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main id="catalogue" class="container">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Catalogue</p>
+        <h2>Voitures disponibles</h2>
+      </div>
+      <button id="open-assistant" class="btn-secondary" type="button">Assistant IA</button>
+    </div>
+
+    {% if message %}
+      <p class="empty-message">{{ message }}</p>
+    {% else %}
+      <div class="car-grid">
+        {% for voiture in voitures %}
+          <article class="car-card">
+            <div class="car-visual badge-{{ voiture.type }}">
+              <span>{{ voiture.type }}</span>
+            </div>
+            <div class="car-info">
+              <div class="car-title-row">
+                <h3>{{ voiture.marque }} {{ voiture.modele }}</h3>
+                <strong>{{ voiture.prix_jour }} DH</strong>
+              </div>
+              <ul class="car-details" aria-label="Caracteristiques">
+                <li><span>Places</span><strong>{{ voiture.places }}</strong></li>
+                <li><span>Transmission</span><strong>{{ voiture.transmission }}</strong></li>
+                <li><span>Carburant</span><strong>{{ voiture.carburant }}</strong></li>
+              </ul>
+              <button class="btn-primary" type="button">Reserver</button>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </main>
+
+  <footer class="site-footer">
+    <p>AutoLoc - Gestion de location de voitures</p>
+  </footer>
+
+  <button id="chat-toggle" class="chat-toggle" type="button" title="Assistant IA" aria-label="Ouvrir l'assistant IA">
+    <span id="chat-icon">AI</span>
+  </button>
+
+  <div id="chat-window" class="chat-window hidden" aria-live="polite">
+    <div class="chat-header">
+      <div>
+        <strong>Alex</strong>
+        <small>Assistant AutoLoc</small>
+      </div>
+      <button id="chat-close" class="chat-close" type="button" aria-label="Fermer">x</button>
+    </div>
+
+    <div id="chat-messages" class="chat-messages"></div>
+
+    <div class="chat-input-area">
+      <input id="chat-input" type="text" placeholder="Votre message..." autocomplete="off" />
+      <button id="chat-send" type="button" aria-label="Envoyer">Envoyer</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+</body>
+</html>
