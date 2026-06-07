@@ -52,7 +52,7 @@ sendBtn.addEventListener('click', () => {
 });
 
 function startConversation() {
-  appendBotMessage("Bonjour, je suis Alex. Quel est votre budget journalier approximatif pour la location ?");
+  appendBotMessage("Bonjour ! Je suis Alex, votre conseiller AutoLoc. Pour vous trouver la voiture idéale, j'ai besoin de quelques infos. Quel est votre budget journalier approximatif (en DH) ?");
 }
 
 function sendMessage() {

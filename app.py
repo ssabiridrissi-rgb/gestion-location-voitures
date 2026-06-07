@@ -19,6 +19,15 @@ voitures = [
     {"id": 6, "marque": "BMW",        "modele": "Serie 3",  "type": "berline",    "places": 5, "prix_jour": 110, "transmission": "automatique", "carburant": "essence"},
     {"id": 7, "marque": "Toyota",     "modele": "Yaris",    "type": "citadine",   "places": 5, "prix_jour": 35,  "transmission": "automatique", "carburant": "hybride"},
     {"id": 8, "marque": "Volkswagen", "modele": "Touareg",  "type": "suv",        "places": 7, "prix_jour": 95,  "transmission": "automatique", "carburant": "diesel"},
+    {"id": 9,  "marque": "Hyundai",    "modele": "Tucson",   "type": "suv",        "places": 5, "prix_jour": 65,  "transmission": "automatique", "carburant": "essence"},
+    {"id": 10, "marque": "Kia",        "modele": "Sportage", "type": "suv",        "places": 5, "prix_jour": 60,  "transmission": "manuelle",    "carburant": "diesel"},
+    {"id": 11, "marque": "Fiat",       "modele": "500",      "type": "citadine",   "places": 4, "prix_jour": 25,  "transmission": "manuelle",    "carburant": "essence"},
+    {"id": 12, "marque": "Nissan",     "modele": "Qashqai",  "type": "suv",        "places": 5, "prix_jour": 70,  "transmission": "automatique", "carburant": "hybride"},
+    {"id": 13, "marque": "Audi",       "modele": "A3",       "type": "berline",    "places": 5, "prix_jour": 100, "transmission": "automatique", "carburant": "essence"},
+    {"id": 14, "marque": "Citroen",    "modele": "Berlingo", "type": "utilitaire", "places": 5, "prix_jour": 50,  "transmission": "manuelle",    "carburant": "diesel"},
+    {"id": 15, "marque": "Seat",       "modele": "Ibiza",    "type": "citadine",   "places": 5, "prix_jour": 28,  "transmission": "manuelle",    "carburant": "essence"},
+    {"id": 16, "marque": "Honda",      "modele": "CR-V",     "type": "suv",        "places": 7, "prix_jour": 85,  "transmission": "automatique", "carburant": "hybride"},
+    {"id": 17, "marque": "Skoda",      "modele": "Octavia",  "type": "berline",    "places": 5, "prix_jour": 48,  "transmission": "manuelle",    "carburant": "diesel"},
 ]
 
 reservations = []
@@ -163,21 +172,27 @@ def chat():
         ensure_ascii=False, indent=2
     )
 
-    system_prompt = f"""Tu es Alex, un conseiller sympathique de l'agence AutoLoc. Tu aides les clients à trouver la voiture idéale.
+    system_prompt = f"""Tu es Alex, conseiller de l'agence AutoLoc. Ton seul rôle est d'aider le client à choisir la meilleure voiture parmi le catalogue ci-dessous.
 
-Catalogue disponible:
+Catalogue disponible (JSON):
 {catalogue}
 
-Instructions:
-- Accueille chaleureusement le client dès le premier message.
-- Pose des questions une par une (pas toutes en même temps) pour cerner ses besoins:
-  1. Budget journalier approximatif
-  2. Nombre de passagers
-  3. Type de trajet (ville / vacances / longue route / déménagement)
-  4. Préférence transmission (automatique / manuelle / peu importe)
-- Après 3 à 4 échanges, recommande LA voiture la plus adaptée, cite son nom complet (marque + modèle), son prix, et explique en 2 phrases pourquoi c'est le bon choix.
-- Si le budget est trop bas pour toutes les voitures, propose la moins chère et mentionne la différence.
-- Réponds TOUJOURS en français. Sois concis (max 3 phrases par réponse). Sois chaleureux."""
+RÈGLE ABSOLUE — Processus d'entretien en 5 étapes strictes:
+Tu DOIS poser exactement ces 5 questions, UNE PAR UNE, dans cet ordre, et attendre la réponse du client avant de passer à la suivante. Ne pose jamais deux questions en même temps.
+
+Étape 1 — Budget: "Quel est votre budget journalier approximatif (en DH) ?"
+Étape 2 — Passagers: "Combien de personnes voyagent avec vous ?"
+Étape 3 — Trajet: "Quel type de trajet prévoyez-vous ? (ville, vacances, longue route, déménagement)"
+Étape 4 — Transmission: "Vous préférez une transmission automatique, manuelle, ou peu importe ?"
+Étape 5 — Carburant: "Avez-vous une préférence pour le carburant ? (essence, diesel, hybride, peu importe)"
+
+Après avoir obtenu les 5 réponses, recommande UNE SEULE voiture du catalogue. Mentionne son nom complet (marque + modèle), son prix exact en DH/jour, et explique en 2 phrases courtes pourquoi c'est le meilleur choix selon les critères donnés.
+
+Règles supplémentaires:
+- Si le budget est inférieur au prix de toutes les voitures, recommande la moins chère et indique la différence.
+- Réponds TOUJOURS en français.
+- Sois concis : maximum 2 phrases par réponse intermédiaire.
+- Ne mentionne jamais les étapes ou la structure de l'entretien au client."""
 
     groq_messages = [{"role": "system", "content": system_prompt}]
     for msg in messages:
