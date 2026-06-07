@@ -1,46 +1,7 @@
-\# 🚗 Gestion Location Voitures
+# Gestion de Location de Voitures
 
+Application web de gestion de location de voitures avec Flask et IA.
 
-
-Système de gestion d'une entreprise de location de voitures.
-
-
-
-\## 📋 Description
-
-Application web permettant de gérer les véhicules, les clients et les réservations d'une agence de location de voitures.
-
-
-
-\## 🛠 Technologies
-
-\- Python / Flask
-
-\- HTML / CSS
-
-\- GitHub Actions
-
-
-
-\## 👥 Équipe
-
-\- P1 : Workflow \& Release Manager
-
-\- P2 : Feature \& AI Lead
-
-\- P3 : Quality \& Refactoring Lead
-
-\- P4 : Business \& Documentation Lead
-
-
-
-\## 🚀 Lancer le projet
-
-```bash
-
-pip install -r requirements.txt
-
-python app.py
-
-```
-
+## Correction hotfix
+- Correction du titre principal du README
+- Correction de la description du projet
