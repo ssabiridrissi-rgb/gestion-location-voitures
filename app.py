@@ -1,0 +1,282 @@
+import os
+import json
+from abc import ABC, abstractmethod
+from datetime import date
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+# =============================================================================
+# STRATEGY DESIGN PATTERN — Chatbot AI Backend
+# =============================================================================
+#
+# BEFORE (without pattern):
+#   The /chat route directly created a Groq client, built the message list,
+#   and called the API — all mixed in one function. Changing the AI provider
+#   meant editing the route itself, and testing required a live Groq key.
+#
+# AFTER (with Strategy pattern):
+#   • ChatbotStrategy   — abstract interface (the "contract" every backend must honour)
+#   • GroqChatbotStrategy — concrete implementation using the Groq API
+#   • ChatbotContext    — holds the active strategy and delegates calls to it
+#
+#   To swap providers (e.g. OpenAI, Mistral): create a new concrete class that
+#   implements ChatbotStrategy and pass it to ChatbotContext — the route is untouched.
+#   For tests: inject a mock strategy with no API dependency.
+# =============================================================================
+
+class ChatbotStrategy(ABC):
+    """Abstract base class — defines the interface all chatbot backends must implement."""
+
+    @abstractmethod
+    def get_response(self, messages: list, system_prompt: str) -> str:
+        """Return the assistant's reply as a plain string.
+
+        Args:
+            messages: list of {"role": ..., "content": ...} dicts (conversation history).
+            system_prompt: the system instructions to prepend to the conversation.
+        """
+
+
+class GroqChatbotStrategy(ChatbotStrategy):
+    """Concrete strategy — calls the Groq API with a Llama model."""
+
+    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile"):
+        self._client = Groq(api_key=api_key)
+        self._model = model
+
+    def get_response(self, messages: list, system_prompt: str) -> str:
+        groq_messages = [{"role": "system", "content": system_prompt}]
+        for msg in messages:
+            role = "assistant" if msg["role"] == "assistant" else "user"
+            groq_messages.append({"role": role, "content": msg["content"]})
+
+        completion = self._client.chat.completions.create(
+            model=self._model,
+            messages=groq_messages,
+            max_tokens=400,
+        )
+        return completion.choices[0].message.content
+
+
+class ChatbotContext:
+    """Context — holds a ChatbotStrategy and delegates calls to it.
+
+    The strategy can be replaced at runtime via set_strategy(), making it easy
+    to switch providers without touching any route or business logic.
+    """
+
+    def __init__(self, strategy: ChatbotStrategy):
+        self._strategy = strategy
+
+    def set_strategy(self, strategy: ChatbotStrategy) -> None:
+        self._strategy = strategy
+
+    def get_response(self, messages: list, system_prompt: str) -> str:
+        return self._strategy.get_response(messages, system_prompt)
+
+# =============================================================================
+
+voitures = [
+    {"id": 1, "marque": "Renault",    "modele": "Clio",     "type": "citadine",   "places": 5, "prix_jour": 30,  "transmission": "manuelle",    "carburant": "essence"},
+    {"id": 2, "marque": "Peugeot",    "modele": "308",      "type": "berline",    "places": 5, "prix_jour": 45,  "transmission": "automatique", "carburant": "diesel"},
+    {"id": 3, "marque": "Dacia",      "modele": "Duster",   "type": "suv",        "places": 5, "prix_jour": 55,  "transmission": "manuelle",    "carburant": "diesel"},
+    {"id": 4, "marque": "Ford",       "modele": "Transit",  "type": "utilitaire", "places": 3, "prix_jour": 80,  "transmission": "manuelle",    "carburant": "diesel"},
+    {"id": 5, "marque": "Mercedes",   "modele": "Classe A", "type": "berline",    "places": 5, "prix_jour": 90,  "transmission": "automatique", "carburant": "essence"},
+    {"id": 6, "marque": "BMW",        "modele": "Serie 3",  "type": "berline",    "places": 5, "prix_jour": 110, "transmission": "automatique", "carburant": "essence"},
+    {"id": 7, "marque": "Toyota",     "modele": "Yaris",    "type": "citadine",   "places": 5, "prix_jour": 35,  "transmission": "automatique", "carburant": "hybride"},
+    {"id": 8, "marque": "Volkswagen", "modele": "Touareg",  "type": "suv",        "places": 7, "prix_jour": 95,  "transmission": "automatique", "carburant": "diesel"},
+    {"id": 9,  "marque": "Hyundai",    "modele": "Tucson",   "type": "suv",        "places": 5, "prix_jour": 65,  "transmission": "automatique", "carburant": "essence"},
+    {"id": 10, "marque": "Kia",        "modele": "Sportage", "type": "suv",        "places": 5, "prix_jour": 60,  "transmission": "manuelle",    "carburant": "diesel"},
+    {"id": 11, "marque": "Fiat",       "modele": "500",      "type": "citadine",   "places": 4, "prix_jour": 25,  "transmission": "manuelle",    "carburant": "essence"},
+    {"id": 12, "marque": "Nissan",     "modele": "Qashqai",  "type": "suv",        "places": 5, "prix_jour": 70,  "transmission": "automatique", "carburant": "hybride"},
+    {"id": 13, "marque": "Audi",       "modele": "A3",       "type": "berline",    "places": 5, "prix_jour": 100, "transmission": "automatique", "carburant": "essence"},
+    {"id": 14, "marque": "Citroen",    "modele": "Berlingo", "type": "utilitaire", "places": 5, "prix_jour": 50,  "transmission": "manuelle",    "carburant": "diesel"},
+    {"id": 15, "marque": "Seat",       "modele": "Ibiza",    "type": "citadine",   "places": 5, "prix_jour": 28,  "transmission": "manuelle",    "carburant": "essence"},
+    {"id": 16, "marque": "Honda",      "modele": "CR-V",     "type": "suv",        "places": 7, "prix_jour": 85,  "transmission": "automatique", "carburant": "hybride"},
+    {"id": 17, "marque": "Skoda",      "modele": "Octavia",  "type": "berline",    "places": 5, "prix_jour": 48,  "transmission": "manuelle",    "carburant": "diesel"},
+]
+
+reservations = []
+
+@app.route('/')
+def index():
+    message = "Aucune voiture disponible pour le moment." if not voitures else None
+    return render_template(
+        'index.html',
+        voitures=voitures,
+        message=message,
+        reservations_count=len(reservations),
+    )
+
+def get_next_reservation_id():
+    return max((reservation["id"] for reservation in reservations), default=0) + 1
+
+def get_next_car_id():
+    return max((voiture["id"] for voiture in voitures), default=0) + 1
+
+def get_car_by_id(voiture_id):
+    return next((voiture for voiture in voitures if voiture["id"] == voiture_id), None)
+
+def get_reservations_by_car():
+    grouped_reservations = {voiture["id"]: [] for voiture in voitures}
+    for reservation in reservations:
+        grouped_reservations.setdefault(reservation["voiture_id"], []).append(reservation)
+    return grouped_reservations
+
+def build_car_from_form(voiture_id):
+    return {
+        "id": voiture_id,
+        "marque": request.form["marque"].strip(),
+        "modele": request.form["modele"].strip(),
+        "type": request.form["type"],
+        "places": int(request.form["places"]),
+        "prix_jour": int(request.form["prix_jour"]),
+        "transmission": request.form["transmission"],
+        "carburant": request.form["carburant"],
+    }
+
+def build_reservation_from_form(voiture):
+    date_debut = date.fromisoformat(request.form["date_debut"])
+    date_fin = date.fromisoformat(request.form["date_fin"])
+    duree = (date_fin - date_debut).days + 1
+
+    return {
+        "id": get_next_reservation_id(),
+        "voiture_id": voiture["id"],
+        "client_nom": request.form["client_nom"].strip(),
+        "client_email": request.form["client_email"].strip(),
+        "client_telephone": request.form["client_telephone"].strip(),
+        "date_debut": date_debut.isoformat(),
+        "date_fin": date_fin.isoformat(),
+        "duree": duree,
+        "total": duree * voiture["prix_jour"],
+    }
+
+@app.route('/voitures/<int:voiture_id>/reserve', methods=['POST'])
+def reserve_car(voiture_id):
+    voiture = get_car_by_id(voiture_id)
+    if voiture is None:
+        flash("Voiture introuvable.", "error")
+        return redirect(url_for('index'))
+
+    try:
+        reservation = build_reservation_from_form(voiture)
+    except ValueError:
+        flash("Les dates de reservation sont invalides.", "error")
+        return redirect(url_for('index', _anchor='catalogue'))
+
+    if not reservation["client_nom"] or not reservation["client_email"] or not reservation["client_telephone"]:
+        flash("Veuillez remplir toutes les informations client.", "error")
+        return redirect(url_for('index', _anchor='catalogue'))
+
+    if reservation["duree"] <= 0:
+        flash("La date de fin doit etre apres la date de debut.", "error")
+        return redirect(url_for('index', _anchor='catalogue'))
+
+    reservations.append(reservation)
+    flash(
+        f"Reservation confirmee pour {voiture['marque']} {voiture['modele']} - total {reservation['total']} DH.",
+        "success",
+    )
+    return redirect(url_for('index', _anchor='catalogue'))
+
+@app.route('/admin')
+def admin_cars():
+    return render_template(
+        'admin.html',
+        voitures=voitures,
+        reservations=reservations,
+        reservations_by_car=get_reservations_by_car(),
+    )
+
+@app.route('/admin/voitures/add', methods=['POST'])
+def add_car():
+    voitures.append(build_car_from_form(get_next_car_id()))
+    flash("Voiture ajoutee avec succes.", "success")
+    return redirect(url_for('admin_cars'))
+
+@app.route('/admin/voitures/<int:voiture_id>/update', methods=['POST'])
+def update_car(voiture_id):
+    voiture = get_car_by_id(voiture_id)
+    if voiture is None:
+        flash("Voiture introuvable.", "error")
+        return redirect(url_for('admin_cars'))
+
+    voiture.update(build_car_from_form(voiture_id))
+    flash("Voiture modifiee avec succes.", "success")
+    return redirect(url_for('admin_cars'))
+
+@app.route('/admin/voitures/<int:voiture_id>/delete', methods=['POST'])
+def delete_car(voiture_id):
+    voiture = get_car_by_id(voiture_id)
+    if voiture is None:
+        flash("Voiture introuvable.", "error")
+        return redirect(url_for('admin_cars'))
+
+    voitures.remove(voiture)
+    reservations[:] = [
+        reservation for reservation in reservations
+        if reservation["voiture_id"] != voiture_id
+    ]
+    flash("Voiture supprimee avec succes.", "success")
+    return redirect(url_for('admin_cars'))
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    messages = data.get('messages', [])
+
+    api_key = os.environ.get('GROQ_API_KEY')
+    if not api_key:
+        return jsonify({"error": "GROQ_API_KEY non configurée. Ajoutez-la dans le fichier .env"}), 500
+
+    catalogue = json.dumps(
+        [{"marque": v["marque"], "modele": v["modele"], "type": v["type"],
+          "places": v["places"], "prix_jour": v["prix_jour"] + 10,
+          "transmission": v["transmission"], "carburant": v["carburant"]}
+         for v in voitures],
+        ensure_ascii=False, indent=2
+    )
+
+    system_prompt = f"""Tu es Alex, conseiller de l'agence AutoLoc. Ton seul rôle est d'aider le client à choisir la meilleure voiture parmi le catalogue ci-dessous.
+
+Catalogue disponible (JSON):
+{catalogue}
+
+RÈGLE ABSOLUE — Processus d'entretien en 5 étapes strictes:
+Tu DOIS poser exactement ces 5 questions, UNE PAR UNE, dans cet ordre, et attendre la réponse du client avant de passer à la suivante. Ne pose jamais deux questions en même temps.
+
+Étape 1 — Budget: "Quel est votre budget journalier approximatif (en DH) ?"
+Étape 2 — Passagers: "Combien de personnes voyagent avec vous ?"
+Étape 3 — Trajet: "Quel type de trajet prévoyez-vous ? (ville, vacances, longue route, déménagement)"
+Étape 4 — Transmission: "Vous préférez une transmission automatique, manuelle, ou peu importe ?"
+Étape 5 — Carburant: "Avez-vous une préférence pour le carburant ? (essence, diesel, hybride, peu importe)"
+
+Après avoir obtenu les 5 réponses, recommande UNE SEULE voiture du catalogue. Mentionne son nom complet (marque + modèle), son prix exact en DH/jour, et explique en 2 phrases courtes pourquoi c'est le meilleur choix selon les critères donnés.
+
+Règles supplémentaires:
+- Si le budget est inférieur au prix de toutes les voitures, recommande la moins chère et indique la différence.
+- Réponds TOUJOURS en français.
+- Sois concis : maximum 2 phrases par réponse intermédiaire.
+- Ne mentionne jamais les étapes ou la structure de l'entretien au client."""
+
+    # Strategy pattern: inject GroqChatbotStrategy into ChatbotContext.
+    # To switch to a different AI provider, replace GroqChatbotStrategy with
+    # another ChatbotStrategy subclass — nothing else in this route changes.
+    context = ChatbotContext(GroqChatbotStrategy(api_key=api_key))
+
+    try:
+        reply = context.get_response(messages, system_prompt)
+        return jsonify({"response": reply})
+    except Exception as e:
+        return jsonify({"error": f"Erreur Groq : {str(e)}"}), 500
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

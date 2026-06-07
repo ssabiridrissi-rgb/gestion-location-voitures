@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoLoc - Administration</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="AutoLoc accueil">
+        <span class="brand-mark">A</span>
+        <span>AutoLoc</span>
+      </a>
+      <nav class="main-nav" aria-label="Navigation principale">
+        <a href="{{ url_for('index') }}">Catalogue</a>
+        <a class="active" href="{{ url_for('admin_cars') }}">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container admin-container">
+    <div class="section-heading admin-heading">
+      <div>
+        <p class="eyebrow">Administration</p>
+        <h1>Gestion des voitures</h1>
+        <p>Ajoutez une voiture, modifiez le catalogue et suivez les reservations par modele.</p>
+      </div>
+      <a class="btn-secondary" href="{{ url_for('index') }}">Voir le catalogue</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+          {% for category, message in messages %}
+            <p class="flash flash-{{ category }}">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="admin-section">
+      <div class="section-subheading">
+        <h2>Ajouter une voiture</h2>
+        <span>{{ voitures|length }} voitures dans le catalogue</span>
+      </div>
+      <form class="admin-form add-car-form" action="{{ url_for('add_car') }}" method="post">
+        <label>
+          Marque
+          <input name="marque" type="text" placeholder="Renault" required />
+        </label>
+        <label>
+          Modele
+          <input name="modele" type="text" placeholder="Clio" required />
+        </label>
+        <label>
+          Type
+          <select name="type" required>
+            <option value="citadine">Citadine</option>
+            <option value="berline">Berline</option>
+            <option value="suv">SUV</option>
+            <option value="utilitaire">Utilitaire</option>
+          </select>
+        </label>
+        <label>
+          Places
+          <input name="places" type="number" min="1" value="5" required />
+        </label>
+        <label>
+          Prix / jour
+          <input name="prix_jour" type="number" min="1" placeholder="300" required />
+        </label>
+        <label>
+          Transmission
+          <select name="transmission" required>
+            <option value="manuelle">Manuelle</option>
+            <option value="automatique">Automatique</option>
+          </select>
+        </label>
+        <label>
+          Carburant
+          <select name="carburant" required>
+            <option value="essence">Essence</option>
+            <option value="diesel">Diesel</option>
+            <option value="hybride">Hybride</option>
+            <option value="electrique">Electrique</option>
+          </select>
+        </label>
+        <button class="btn-primary" type="submit">Ajouter</button>
+      </form>
+    </section>
+
+    <section class="admin-section">
+      <div class="section-subheading">
+        <h2>Modifier le catalogue</h2>
+        <span>Changements en memoire pendant la session Flask</span>
+      </div>
+
+      {% if voitures %}
+        <div class="admin-table" role="table" aria-label="Liste des voitures">
+          <div class="admin-row admin-row-head" role="row">
+            <span>Marque</span>
+            <span>Modele</span>
+            <span>Type</span>
+            <span>Places</span>
+            <span>Prix</span>
+            <span>Transmission</span>
+            <span>Carburant</span>
+            <span>Actions</span>
+          </div>
+
+          {% for voiture in voitures %}
+            <form class="admin-row" action="{{ url_for('update_car', voiture_id=voiture.id) }}" method="post" role="row">
+              <input name="marque" type="text" value="{{ voiture.marque }}" aria-label="Marque" required />
+              <input name="modele" type="text" value="{{ voiture.modele }}" aria-label="Modele" required />
+              <select name="type" aria-label="Type" required>
+                {% for type_option in ["citadine", "berline", "suv", "utilitaire"] %}
+                  <option value="{{ type_option }}" {% if voiture.type == type_option %}selected{% endif %}>{{ type_option }}</option>
+                {% endfor %}
+              </select>
+              <input name="places" type="number" min="1" value="{{ voiture.places }}" aria-label="Places" required />
+              <input name="prix_jour" type="number" min="1" value="{{ voiture.prix_jour }}" aria-label="Prix par jour" required />
+              <select name="transmission" aria-label="Transmission" required>
+                {% for transmission_option in ["manuelle", "automatique"] %}
+                  <option value="{{ transmission_option }}" {% if voiture.transmission == transmission_option %}selected{% endif %}>{{ transmission_option }}</option>
+                {% endfor %}
+              </select>
+              <select name="carburant" aria-label="Carburant" required>
+                {% for carburant_option in ["essence", "diesel", "hybride", "electrique"] %}
+                  <option value="{{ carburant_option }}" {% if voiture.carburant == carburant_option %}selected{% endif %}>{{ carburant_option }}</option>
+                {% endfor %}
+              </select>
+              <div class="admin-actions">
+                <button class="btn-small btn-save" type="submit">Modifier</button>
+                <button class="btn-small btn-danger" type="submit" form="delete-car-{{ voiture.id }}">Supprimer</button>
+              </div>
+            </form>
+            <form id="delete-car-{{ voiture.id }}" action="{{ url_for('delete_car', voiture_id=voiture.id) }}" method="post"></form>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-message">Aucune voiture dans le catalogue.</p>
+      {% endif %}
+    </section>
+
+    <section class="admin-section">
+      <div class="section-subheading">
+        <h2>Reservations par voiture</h2>
+        <span>{{ reservations|length }} reservations enregistrees</span>
+      </div>
+
+      {% if reservations %}
+        <div class="reservation-admin-list">
+          {% for voiture in voitures %}
+            {% set car_reservations = reservations_by_car.get(voiture.id, []) %}
+            <article class="reservation-group">
+              <div class="reservation-group-header">
+                <div>
+                  <h3>{{ voiture.marque }} {{ voiture.modele }}</h3>
+                  <p>{{ voiture.type }} - {{ voiture.prix_jour }} DH / jour</p>
+                </div>
+                <strong>{{ car_reservations|length }}</strong>
+              </div>
+
+              {% if car_reservations %}
+                <div class="reservation-table">
+                  <div class="reservation-row reservation-row-head">
+                    <span>Client</span>
+                    <span>Contact</span>
+                    <span>Periode</span>
+                    <span>Total</span>
+                  </div>
+                  {% for reservation in car_reservations %}
+                    <div class="reservation-row">
+                      <span>
+                        <strong>{{ reservation.client_nom }}</strong>
+                        <small>#{{ reservation.id }}</small>
+                      </span>
+                      <span>
+                        {{ reservation.client_email }}
+                        <small>{{ reservation.client_telephone }}</small>
+                      </span>
+                      <span>
+                        {{ reservation.date_debut }} -> {{ reservation.date_fin }}
+                        <small>{{ reservation.duree }} jours</small>
+                      </span>
+                      <span><strong>{{ reservation.total }} DH</strong></span>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <p class="empty-message">Aucune reservation pour cette voiture.</p>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-message">Aucune reservation pour le moment.</p>
+      {% endif %}
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>AutoLoc - Administration</p>
+  </footer>
+</body>
+</html>
