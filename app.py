@@ -1,5 +1,6 @@
 import os
 import json
+from abc import ABC, abstractmethod
 from datetime import date
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 from groq import Groq
@@ -9,6 +10,77 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+# =============================================================================
+# STRATEGY DESIGN PATTERN — Chatbot AI Backend
+# =============================================================================
+#
+# BEFORE (without pattern):
+#   The /chat route directly created a Groq client, built the message list,
+#   and called the API — all mixed in one function. Changing the AI provider
+#   meant editing the route itself, and testing required a live Groq key.
+#
+# AFTER (with Strategy pattern):
+#   • ChatbotStrategy   — abstract interface (the "contract" every backend must honour)
+#   • GroqChatbotStrategy — concrete implementation using the Groq API
+#   • ChatbotContext    — holds the active strategy and delegates calls to it
+#
+#   To swap providers (e.g. OpenAI, Mistral): create a new concrete class that
+#   implements ChatbotStrategy and pass it to ChatbotContext — the route is untouched.
+#   For tests: inject a mock strategy with no API dependency.
+# =============================================================================
+
+class ChatbotStrategy(ABC):
+    """Abstract base class — defines the interface all chatbot backends must implement."""
+
+    @abstractmethod
+    def get_response(self, messages: list, system_prompt: str) -> str:
+        """Return the assistant's reply as a plain string.
+
+        Args:
+            messages: list of {"role": ..., "content": ...} dicts (conversation history).
+            system_prompt: the system instructions to prepend to the conversation.
+        """
+
+
+class GroqChatbotStrategy(ChatbotStrategy):
+    """Concrete strategy — calls the Groq API with a Llama model."""
+
+    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile"):
+        self._client = Groq(api_key=api_key)
+        self._model = model
+
+    def get_response(self, messages: list, system_prompt: str) -> str:
+        groq_messages = [{"role": "system", "content": system_prompt}]
+        for msg in messages:
+            role = "assistant" if msg["role"] == "assistant" else "user"
+            groq_messages.append({"role": role, "content": msg["content"]})
+
+        completion = self._client.chat.completions.create(
+            model=self._model,
+            messages=groq_messages,
+            max_tokens=400,
+        )
+        return completion.choices[0].message.content
+
+
+class ChatbotContext:
+    """Context — holds a ChatbotStrategy and delegates calls to it.
+
+    The strategy can be replaced at runtime via set_strategy(), making it easy
+    to switch providers without touching any route or business logic.
+    """
+
+    def __init__(self, strategy: ChatbotStrategy):
+        self._strategy = strategy
+
+    def set_strategy(self, strategy: ChatbotStrategy) -> None:
+        self._strategy = strategy
+
+    def get_response(self, messages: list, system_prompt: str) -> str:
+        return self._strategy.get_response(messages, system_prompt)
+
+# =============================================================================
 
 voitures = [
     {"id": 1, "marque": "Renault",    "modele": "Clio",     "type": "citadine",   "places": 5, "prix_jour": 30,  "transmission": "manuelle",    "carburant": "essence"},
@@ -194,19 +266,13 @@ Règles supplémentaires:
 - Sois concis : maximum 2 phrases par réponse intermédiaire.
 - Ne mentionne jamais les étapes ou la structure de l'entretien au client."""
 
-    groq_messages = [{"role": "system", "content": system_prompt}]
-    for msg in messages:
-        role = "assistant" if msg["role"] == "assistant" else "user"
-        groq_messages.append({"role": role, "content": msg["content"]})
+    # Strategy pattern: inject GroqChatbotStrategy into ChatbotContext.
+    # To switch to a different AI provider, replace GroqChatbotStrategy with
+    # another ChatbotStrategy subclass — nothing else in this route changes.
+    context = ChatbotContext(GroqChatbotStrategy(api_key=api_key))
 
     try:
-        client = Groq(api_key=api_key)
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=groq_messages,
-            max_tokens=400,
-        )
-        reply = completion.choices[0].message.content
+        reply = context.get_response(messages, system_prompt)
         return jsonify({"response": reply})
     except Exception as e:
         return jsonify({"error": f"Erreur Groq : {str(e)}"}), 500
